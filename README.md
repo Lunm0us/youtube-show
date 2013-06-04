@@ -16,14 +16,16 @@ vlc are known to work, mplayer and others should also work but need further conf
 
 Therefore executing
 ```sh
-sudo apt-get install pygtk omxplayer```
+sudo apt-get install pygtk omxplayer
+```
 to install pygtk and omxplayer, should be enough for raspberry-pi users.
 
 ## Installation
 Open a terminal and go to the directory where the youtube-show files are. Then type
 ```sh
 ./pack pack
-sudo ./pack install```
+sudo ./pack install
+```
 If you don't get an error message you should have a packed and executable version in
 /usr/local/bin/youtube-show.
 
@@ -43,7 +45,9 @@ If you want to use a custom player (anything different from omxplayer, ffplay, a
 open the Preference dialog (File->Preferences) and enter the command to execute in the player
 field but use %f for the filename. May also use %t for the video-title (e.g. window title) and %u for the user-agent that should be used in requests.
 E.g. ffplay uses:
-```ffplay -autoexit -window-title %t -infbuf -user-agent %u %f```
+```sh
+ffplay -autoexit -window-title %t -infbuf -user-agent %u %f
+```
 
 ## Acknowledgements
 Most of the youtube connection part was taken from [youtube-dl](https://github.com/rg3/youtube-dl)
