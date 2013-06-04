@@ -1,0 +1,70 @@
+#!/bin/bash
+
+BINDIR=/usr/local/bin
+
+runordie(){
+	if ! $@; then
+		R=$?
+		echo error in command: "$@"
+		exit $R;
+	fi
+}
+
+pack() {
+	echo packing
+	runordie python -m compileall youtube_show
+	cd youtube_show
+	runordie zip -qr ../youtube-show.zip *.pyc
+	cd ..
+	runordie zip -qr youtube-show.zip youtube-show.png ./pixmaps/*.png 
+	runordie echo '#!/usr/bin/python' >youtube-show
+	runordie cat youtube-show.zip >> youtube-show
+	chmod +x youtube-show
+	rm youtube-show.zip
+}
+
+try_pack(){
+	if [ ! -x youtube-show ]; then
+		pack
+	fi
+}
+
+make_icons(){
+	for i in pixmaps/*.svg; do
+		runordie inkscape $i -e $(echo $i| sed 's/\(.*\)\..*/\1/').png -w 128 -h 128
+	done
+}
+
+clean(){
+	runordie rm -f youtube-show
+	for i in youtube_show/*.py; do
+		runordie rm -f "$i"c
+	done
+}
+
+install(){
+	try_pack
+	p=$(which youtube-show)
+	if [ -z "$p" -o ! -f "$p" ]; then
+		echo  -n 'Could not find previous installation;'
+		echo will install to "$BINDIR"
+		p="$BINDIR"
+	else
+		p=$(dirname "$p")
+	fi
+	if [ $(id -u) = 0 ]; then
+		cp youtube-show "$BINDIR" -v
+		chown root:root "$BINDIR"/youtube-show
+	else
+		echo 'your not root'
+	fi
+}
+
+if [ $# -ge 1 ]; then
+	for action in $@; do
+		$action
+	done
+else
+	pack
+fi
+echo 'done'
