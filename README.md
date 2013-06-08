@@ -12,11 +12,11 @@ accelerated fancy YouTube browser see there.
  * pygtk
  * omxplayer or another player which is capable of playing mp4/h.246 or webm/vp8
 videos and can open http streams given on the command line. (omxplayer, ffplay/avplay and
-vlc are known to work, mplayer and others should also work but need further configuration see [Using other players](#Using other Players))
+vlc are known to work, mplayer and others should also work but need further configuration see [Using other players](#using-other-Players))
 
 Therefore executing
 ```sh
-sudo apt-get install pygtk omxplayer
+sudo apt-get install python-gtk2 omxplayer
 ```
 to install pygtk and omxplayer, should be enough for raspberry-pi users.
 

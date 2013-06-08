@@ -892,13 +892,15 @@ class MainWindow(object):
                 else:
                     self.viewer.stop()
             elif event.keyval==gtk.keysyms.Left:
-                print 'left'
                 self.viewer.seek_back()
             elif event.keyval==gtk.keysyms.Right:
-                print 'rigth'
                 self.viewer.seek_forward()
             elif event.keyval==gtk.keysyms.p or event.keyval== gtk.keysyms.space:
                 self.viewer.pause()
+            elif event.keyval==gtk.keysyms.Up:
+                self.viewer.seek_forward_fast()
+            elif event.keyval==gtk.keysyms.Down:
+                self.viewer.seek_back_fast()
             else:
                 self.viewer.communicate(unichr(gtk.gdk.keyval_to_unicode(event.keyval)))
     

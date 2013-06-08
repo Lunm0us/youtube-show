@@ -5,7 +5,6 @@ import os
 import subprocess
 import re
 import time
-import struct
 import sys
 if 'linux' in sys.platform:
     import fcntl
@@ -17,6 +16,11 @@ class Viewer(object):
              (u'ffplay', u'-autoexit', u'-window_title', u'%t',
                u'-infbuf', (u'u', u'-user-agent', u'%u',), u'%f'),
              (u'vlc', u'--no-video-title-show', (u'u', '--http-user-agent', u'%u'), u'%f',)]
+    
+    SEEK_FORW="\x1b\x5b\x43"
+    SEEK_BACK="\x1b\x5b\x44"
+    SEEK_FORW_FAST="\x1b\x5b\x41"
+    SEEK_BACK_FAST="\x1b\x5b\x42"
     
     def __init__(self, player=None):
         if player:
@@ -73,8 +77,8 @@ class Viewer(object):
         self.last = None
         self.running = {}
     
-    def stop(self, pid= -1):
-        if pid > 0 and pid in self.running:
+    def stop(self, pid=None):
+        if pid == None  and pid in self.running:
             proc = self.running[pid]
         else:
             proc = self.last
@@ -89,9 +93,12 @@ class Viewer(object):
         else:
             del self.running[pid]
             
-    def communicate(self, s, pid= -1):
-        if pid <= 0:
-            pid = self.last.pid
+    def communicate(self, s, pid=None):
+        if pid==None:
+            if self.last:
+                pid = self.last.pid
+            else:
+                return
         try:
             self.last.stdin.write(s)
         except Exception as e:
@@ -136,7 +143,7 @@ class Viewer(object):
                         elif code=='t':
                             repl=title
                         elif code=='f':
-                            repl=code
+                            repl=url
                         else:
                             repl=None
                         if repl:
@@ -195,25 +202,24 @@ class Viewer(object):
             self.find_player()
             self.is_generic = True
             
-    def pause(self, pid= -1):
+    def pause(self, pid=None):
         self.communicate(' ', pid)
     
-    def seek_forward(self, pid= -1):
-        self.communicate(struct.pack('<i', 0x435b), pid)
-        self.communicate(struct.pack('<i', 0x5b43), pid)
+    def seek_forward(self, pid = None):
+        self.communicate(self.SEEK_FORW, pid)
         
-    def seek_back(self, pid= -1):
-        self.communicate(struct.pack('<i', 0x5b44), pid)
-        self.communicate(struct.pack('<i', 0x445b), pid)
-
+    def seek_back(self, pid = None):
+        self.communicate(self.SEEK_BACK, pid)
+    
+    def seek_forward_fast(self, pid = None):
+        self.communicate(self.SEEK_FORW_FAST, pid)
+        
+    def seek_back_fast(self, pid = None):
+        self.communicate(self.SEEK_BACK_FAST, pid)
+        
     def add_field(self,field,content):
         self.fields[field]=content
         
     def remove_field(self,field):
         del self.fields[field]
         
-if __name__ == '__main__':
-    viewer=Viewer()
-    viewer.add_field('u', 'TEST')
-    viewer.set_player("player %f -t%t -u %u -procent %%%%%u %% ")
-    print viewer.create_cmdline('url', 'title')
