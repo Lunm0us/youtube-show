@@ -59,15 +59,16 @@ class SearchBar(gtk.ToolItem):
             if text.startswith(comp): return
         if self.timer and self.timer.is_alive():
             self.timer.reset_time()
-            print 'resettet timer'
         else:
             del self.timer
             self.timer=threader.Timer(3,self.emit_need_completion,args=(source,))
             self.timer.start()
+        return True
     
     def emit_need_completion(self, source):
         e=self.emit('need-completion', source.get_text())
         gobject.idle_add(self.set_completion,source,e)
+        source.emit('changed')
         
     def set_completion(self, source, completion):
         model=source.get_completion().get_model()
@@ -251,7 +252,9 @@ class UserDir():
             self.path=os.path.join(os.path.expandvars('%appdata%'),'youtube-show')
         else:
             self.path=os.path.join(os.path.expanduser('~'),'.youtube-show')
-        if os.path.exists(self.path) and not os.path.isdir(self.path):
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
+        elif not os.path.isdir(self.path):
             raise Exception("\"" + self.path + "\" exists but is not a directory!")
         
     def get_conf_file(self):

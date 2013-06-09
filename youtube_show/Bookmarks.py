@@ -36,7 +36,7 @@ class Bookmarks(object):
                         pass
                 self.bookmarks = self.decoder.decode(data)
         except:
-            open(self.file,'w')
+            open(self.file,'w').close()
             
     def get_videos(self):
         videos = []

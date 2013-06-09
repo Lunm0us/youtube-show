@@ -59,7 +59,6 @@ class Timer(threading.Thread):
             time.sleep(0.1)
             with self.time_lock:
                 self.time+=1
-                print self.time
                 if self.time>self.timeout: break
         if self.execute.is_set():
             self.callback(*self.callback_args,**self.callback_kwargs)
