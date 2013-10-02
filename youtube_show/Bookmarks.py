@@ -23,7 +23,7 @@ class Bookmarks(object):
                 data=bz2.compress(data)
             f.write(data)
 
-    def load(self):
+    def load(self,merge=False):
         try:
             with open(self.file, 'r') as f:
                 data=f.read()
@@ -34,7 +34,14 @@ class Bookmarks(object):
                             data=d
                     except:
                         pass
-                self.bookmarks = self.decoder.decode(data)
+                if merge and self.bookmarks:
+                    bookmarks = self.decoder.decode(data)
+                    for bookmark in bookmarks:
+                        if not bookmark in self.bookmarks:
+                            self.bookmarks[bookmark]=bookmarks[bookmark]
+                else:
+                    self.bookmarks = self.decoder.decode(data)
+                    
         except:
             open(self.file,'w').close()
             

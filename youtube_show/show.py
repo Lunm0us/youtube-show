@@ -26,26 +26,27 @@ import time
 
 class SearchBar(gtk.ToolItem):
     __gsignals__ = {
-        'need-completion': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_PYOBJECT,(object,))
+        'need-completion': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_PYOBJECT,(object,)),
+        'search': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE,tuple())
     }
     NO_COMLETION=['user:']
     
-    def __init__(self, callback):
+    def __init__(self):
         gtk.ToolItem.__init__(self)
         box = gtk.HBox()
-        text = gtk.Entry()
-        self.callback=callback
-        text.connect('activate', callback)
-        text.connect('changed',self.do_canged)
-        completion=gtk.EntryCompletion()
-        completion.set_model(gtk.ListStore(str))
-        completion.set_text_column(0)
-        completion.set_match_func(lambda a,b,c: True)
-        completion.connect('match_selected', self.do_match_selected)
-        text.set_completion(completion)
+        self.entry = gtk.Entry()
+        self.entry.connect('activate', self.do_activate)
+        self.entry.connect('changed',self.do_canged)
+        self.completion=gtk.EntryCompletion()
+        self.completion.set_model(gtk.ListStore(str))
+        self.completion.set_text_column(0)
+        self.completion.set_inline_selection(True)
+        self.completion.set_match_func(lambda a,b,c: True)
+        self.completion.connect('match_selected', self.do_match_selected)
+        self.entry.set_completion(self.completion)
         label = gtk.Label('Search: ')
         box.pack_start(label, expand=False, fill=False)
-        box.pack_start(text, expand=True, fill=True)
+        box.pack_start(self.entry, expand=True, fill=True)
         self.set_expand(True)
         self.add(box)
         self.timer=None
@@ -56,7 +57,11 @@ class SearchBar(gtk.ToolItem):
             self.timer.cancel()
             return
         for comp in self.NO_COMLETION:
-            if text.startswith(comp): return
+            if text.startswith(comp):
+                source.set_completion(None)
+                return
+        if not source.get_completion():
+            source.set_completion(self.completion)
         if self.timer and self.timer.is_alive():
             self.timer.reset_time()
         else:
@@ -71,7 +76,7 @@ class SearchBar(gtk.ToolItem):
         source.emit('changed')
         
     def set_completion(self, source, completion):
-        model=source.get_completion().get_model()
+        model=self.completion.get_model()
         model.clear()
         for i in completion:
             model.append((i,))
@@ -81,7 +86,16 @@ class SearchBar(gtk.ToolItem):
         text=model.get(it,0)[0]
         entry=completion.get_entry()
         entry.set_text(text)
-        self.callback(entry)
+        self.emit('search')
+        
+    def do_activate(self, entry):
+        self.emit('search')
+        
+    def get_text(self):
+        return self.entry.get_text()
+    
+    def set_text(self, text):
+        return self.entry.set_text(text)
         
 class ShowBox(gtk.ScrolledWindow):
     
@@ -630,14 +644,16 @@ class MainWindow(object):
         self.prev_button.connect('clicked',self.do_go_prev)
         self.prev_button.set_sensitive(False)
         self.toolbar.insert(self.prev_button, -1)
-        self.searcher = SearchBar(self.do_search)
+        self.searcher = SearchBar()
         self.searcher.connect('need-completion',self.do_get_completion)
+        self.searcher.connect('search', self.do_search)
         self.toolbar.insert(self.searcher,-1)
         self.toolbar.show_all()
         
     def cleanup(self, *args):
         self.win.unfullscreen()
         self.caches.save()
+        self.bookmarks.load(merge=True)
         self.bookmarks.save()
         self.config['size']=self.win.get_size()
         self.config.save()
@@ -667,9 +683,8 @@ class MainWindow(object):
                 self.build_widgets(results)
             else:
                 self.history.newest().end_search.set()  
-        except Exception as e:
-            gobject.idle_add(self.show_error_dialog,"Error", e.message + ' ' + str(e.args))
-            raise
+        except urllib2.URLError as e:
+            gobject.idle_add(self.show_error_dialog,"Error", e.reason)
         finally:
             if end_search:
                 end_search()
@@ -698,7 +713,7 @@ class MainWindow(object):
         self.prev_button.set_sensitive(False)
         self.first_button.set_sensitive(False)
         s=entry.get_text().strip()
-        r=re.match(r'user:(\w*) ?(.*)',s)
+        r=re.match(r'user:([\w\-]*) ?(.*)',s)
         if r and r.lastindex==2:
             user=r.group(1)
             s=None if len(r.group(1).strip())==0 else r.group(2)

@@ -196,7 +196,8 @@ class YTConnector(Connector.Connector):
         try:
             stream_map = elems['url_encoded_fmt_stream_map'][0]
             stream_map = [urlparse.parse_qs(sm)for sm in stream_map.split(',')]
-            stream_map = filter(lambda stream:'itag' in stream and 'url' in stream, stream_map)
+            stream_map = filter(lambda stream:'itag' in stream and 'url' in stream
+                                and 'sig' in stream, stream_map)
             for f in self.formats:
                 for stream in stream_map:
                     if stream['itag'][0] == f:
@@ -210,14 +211,15 @@ class YTConnector(Connector.Connector):
                             if self.cache:
                                 self.cache.add(url)
                         return url
-        except:
+        except Exception as e:
             if 'reason' in elems:
                 x=""
                 for y in elems['reason']: x+=y
                 raise Connector.ConnectorException('Youtube said: ' + x)
             else:
-                raise 
-            
+                raise Connector.ConnectorException('Error fetching the Video URL: ' + str(e) + '\n' + str(stream_map))
+        return None
+    
     def get_description(self,vid):
         query_url=self.PROTO_WEBPAGE % vid
         doc=self.downloader.open(query_url).read()
@@ -346,37 +348,3 @@ class DescriptionParser(HTMLParser.HTMLParser):
         self.error_count += 1
         self.goahead(1)
         
-def test():
-    user='lindseystomp'
-    query='raspberry pi'
-    autocomplete='raspberr'
-    print 'Fetching videos of "%s"' % user
-    q=Connector.Query(offset=1,number=10,user=user)
-    searcher = YTSearcher()
-    result = searcher.search(q)
-    print 'result:'
-    for video in result:
-        print '    ' + video.get_title()
-    saved=result[0]
-    print 'Searching for "%s" videos' % query
-    q=Connector.Query(offset=1,number=10,query=query)
-    result = searcher.search(q)
-    print 'result:'
-    for video in result:
-        print '    ' + video.get_title()
-    print 'Searching for videos related to "%s" (%s)' % (result[0].get_title(),result[0].get_id())
-    q=Connector.Query(offset=1,number=10,vid=result[0].get_id())
-    result = searcher.search(q)
-    print 'result:'
-    for video in result:
-        print '    ' + video.get_title()
-    connector=YTConnector()
-    print 'Getting description for "%s" (%s)' % (saved.get_title(),saved.get_id())
-    print connector.get_description(saved.get_id())
-    print 'Getting completions for "%s"' % autocomplete
-    print 'result:'
-    print  '\n'.join(map(lambda w: '   - ' + w,searcher.get_completions(autocomplete)))
-        
-
-if __name__ == '__main__':
-    test()
