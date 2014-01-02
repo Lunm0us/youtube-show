@@ -46,6 +46,7 @@ class Viewer(object):
         fcntl.fcntl(f, fcntl.F_SETFL, fl | os.O_NONBLOCK)
  
     def find_player(self):
+        self.player = None
         for player in self.PLAYERS:
             if self.check_for_player(player[0]):
                 self.player = player
@@ -53,9 +54,10 @@ class Viewer(object):
         if 'win' in sys.platform:
             for player in self.PLAYERS:
                 if self.check_for_player(player[0] + '.exe'):
-                    self.player=tuple(player[0].exe + x for x in player[1:])
+                    self.player=tuple(player[0] + '.exe') + player[1:]
                     break
-        self.is_omxplayer = bool(re.match('.*omxplayer.*', self.player[0]))
+        if self.player:
+            self.is_omxplayer = bool(re.match('.*omxplayer.*', self.player[0]))
         
     def check_for_player(self, player):
         for path in os.environ['PATH'].split(os.pathsep):
@@ -107,6 +109,8 @@ class Viewer(object):
             self.close(pid)
     
     def view(self, url, title):
+        if not self.player:
+            raise Exception('There is no player defined!')
         title = title if title else url
         cmdline=self.create_cmdline(url, title)
         print cmdline

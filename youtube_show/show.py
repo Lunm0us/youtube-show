@@ -808,7 +808,10 @@ class MainWindow(object):
             url = self.get_video_url(widget.get_video())
             if not url:
                 return
-            self.viewer.view(url,widget.get_video().get_title())
+            try:
+                self.viewer.view(url,widget.get_video().get_title())
+            except Exception as e:
+                self.show_error_dialog('Player Error', unicode(e))
         else:
             self.status('There is still a player running (if not press \'q\')')
     
