@@ -632,6 +632,13 @@ class MainWindow(object):
         i = gtk.ImageMenuItem(gtk.STOCK_QUIT)
         i.connect('activate', self.cleanup)
         fmenu.append(i)
+        f = gtk.MenuItem("Help")
+        fmenu = gtk.Menu()
+        self.menubar.append(f)
+        f.set_submenu(fmenu)
+        i = gtk.ImageMenuItem(gtk.STOCK_ABOUT)
+        i.connect('activate', self.do_show_about_dialog)
+        fmenu.append(i)
         self.menubar.show_all()
         
     def build_tool_bar(self):
@@ -763,6 +770,21 @@ class MainWindow(object):
         if len(results)>0:
             self.build_widgets(results)
             
+    def do_show_about_dialog(self, widget):
+        dialog = gtk.AboutDialog()
+        try:
+            import version
+            dialog.set_version(version.VERSION + " on branch " + version.BRANCH)
+        except ImportError:
+            dialog.set_version("unknown version")
+        dialog.set_program_name("youtube-show")
+        dialog.set_website("http://github.com/Lunm0us/youtube-show")
+        dialog.set_authors(["Lunm0us <blue.gene@web.de>"])
+        dialog.set_logo(self.win.get_icon())
+        dialog.set_icon(self.win.get_icon())
+        dialog.run()
+        dialog.destroy()
+
     def show_video_menu(self, widget, event):
         video = widget.get_video()
         menu = gtk.Menu()
