@@ -7,7 +7,6 @@ import Connector
 import json
 import urllib
 import urlparse
-import HTMLParser
 import time
 
 class YTVideo(Connector.Video):
@@ -87,7 +86,6 @@ class YTSearcher(Connector.Searcher):
     
     def search_video(self, query, number=10, num_from=1):
         query_url=self.PROTO_VIDEO % (urllib.quote_plus(query), num_from, number)
-        print query_url
         f=self.downloader.open(query_url)
         doc=f.read()
         f.close()
@@ -96,7 +94,6 @@ class YTSearcher(Connector.Searcher):
     
     def search_user(self,user,query,number=10,num_from=1):
         query_url=self.PROTO_USER %(user,number,num_from)
-        print query_url
         if query:
             query_url+=self.PROTO_USER_QUERY % query
         doc=self.downloader.open(query_url).read()
@@ -106,7 +103,6 @@ class YTSearcher(Connector.Searcher):
     
     def search_related(self,vid,number=10,num_from=1):
         query_url=self.PROTO_RELATED % (vid,number,num_from)
-        print query_url
         doc=self.downloader.open(query_url).read()
         data=self.decoder.decode(doc)
         del doc
@@ -139,26 +135,25 @@ class YTSearcher(Connector.Searcher):
 class YTConnector(Connector.Connector):
     PROTO_VIDEO = 'https://www.youtube.com/get_video_info?&video_id=%s%s&ps=default&eurl=&gl=US&hl=en'
     PROTO_WEBPAGE = 'https://www.youtube.com/watch?v=%s'
-    
-    CACHE_RE = '(.*://)(.*)(\.c\.youtube.com/.*)'
+    PROTO_VIDEO_INFO = 'https://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=jsonc'
     
     STR_FORMATS = ['all', 'mp4', 'webm']
     STR_QUALITIES = ['360p', '480p', '720p', '1080p']
-    MP4_FORMATS = ['37', '22', '18', '17']
+    MP4_FORMATS = ['38', '37', '22', '18']
     WEBM_FORMATS = ['46','45','44','43']
+    ALL_FORMATS = ['46', '38', '45', '37', '44', '22', '43', '18', '43', '18']
     
     IMAGE_URL = 'http://i%i.ytimg.com/vi/%s/default.jpg'
     MQIMAGE_URL = 'http://i%i.ytimg.com/vi/%s/mqdefault.jpg'
     HQIMAGE_URL = 'http://i%i.ytimg.com/vi/%s/hqdefault.jpg'
     
     def __init__(self, downloader=None, cache=None):
-        self.formats = self.WEBM_FORMATS + self.MP4_FORMATS
+        self.formats = self.ALL_FORMATS
         if downloader:
             self.downloader = downloader
         else:
             self.downloader = urllib2.build_opener()
         self.cache = cache
-        self.desc_parser = DescriptionParser()
     
     def set_formats(self, formats):
         self.formats = formats
@@ -173,8 +168,7 @@ class YTConnector(Connector.Connector):
         elif config['format'] == 'mp4':
             self.formats = YTConnector.MP4_FORMATS[-index:]
         else:
-            self.formats = YTConnector.WEBM_FORMATS[-index:] + YTConnector.MP4_FORMATS[-index:]
-        print self.formats
+            self.formats = YTConnector.ALL_FORMATS[-index*2:]
         
     def get_url_by_id(self, vid, cache=None):
         for el in ['&el=embedded', '&el=detailpage', '&el=vevo', '']:
@@ -182,7 +176,7 @@ class YTConnector(Connector.Connector):
                 doc = self.downloader.open(self.PROTO_VIDEO % (vid,el)).read()
                 elems = urlparse.parse_qs(doc)
                 if 'token' in elems:
-                    break; 
+                    break
             except:
                 raise
         if not 'token' in elems:
@@ -203,10 +197,9 @@ class YTConnector(Connector.Connector):
                     if stream['itag'][0] == f:
                         url = stream['url'][0] + '&signature=' + stream['sig'][0]
                         if cache:
+                            url = CacheSaver.use(url, cache)
                             if self.cache:
                                 self.cache.cache_used(cache)
-                            match=re.match(self.CACHE_RE,url)
-                            url=match.group(1)+cache+match.group(3)
                         else:
                             if self.cache:
                                 self.cache.add(url)
@@ -221,17 +214,12 @@ class YTConnector(Connector.Connector):
         return None
     
     def get_description(self,vid):
-        query_url=self.PROTO_WEBPAGE % vid
-        doc=self.downloader.open(query_url).read()
-        exc=None
+        query_url = self.PROTO_VIDEO_INFO % vid
+        data = json.load(self.downloader.open(query_url))
         try:
-            self.desc_parser.load(doc)
-        except Exception as e:
-            exc=e
-        desc=self.desc_parser.description
-        self.desc_parser.reset()
-        if len(desc)<1 and exc:
-            raise exc
+            desc = data['data']['description']
+        except:
+            desc = u""
         return desc
         
     def get_picture_by_id(self, vid):
@@ -246,7 +234,7 @@ class YTConnector(Connector.Connector):
             raise
         
 class CacheSaver():
-    CACHE_RE = '.*://(.*)\.c\.youtube.com/.*'
+    CACHE_RE = '(.*://)(.*)(\.googlevideo\.com/.*)'
     
     def __init__(self, f):
         self.filename=f
@@ -282,7 +270,7 @@ class CacheSaver():
             for cache in self.caches:
                 if self.caches[cache]>1:
                     self.caches[cache]-=1
-    
+                    
     def save(self):
         if self.caches:
             with open(self.filename,'w') as f:
@@ -294,57 +282,15 @@ class CacheSaver():
         try:
             match=self.cache_re.match(url)
             if not match: return
-            cache=match.group(1)
+            cache=match.group(2)
             if not cache in self.caches:
                 self.caches[cache]=0
         except:
             pass
 
-"""
-This is mainly from youtube-dl
-"""
-class DescriptionParser(HTMLParser.HTMLParser):
-    def __init__(self):
-        HTMLParser.HTMLParser.__init__(self)
-        self.reset()
-
-    def handle_starttag(self, tag, attrs):
-        for attr in attrs:
-            if attr[0]=='id' and attr[1]=='eow-description':
-                self.in_description=True
-        if self.in_description:
-            self.stack.append(tag)
-
-    def handle_startendtag(self, tag, attrs):
-        if self.in_description and tag=='br':
-            self.description+='\n'
-    
-    def handle_endtag(self,tag):
-        if self.in_description:
-            self.stack.pop()
-            if len(self.stack)<1:
-                self.in_description=False
-    
-    def handle_data(self,data):
-        if self.in_description:
-            self.description+=data
-           
-    def load(self,html):
-        self.html=html
-        self.feed(html)
-        self.close()
-    
-    def reset(self):
-        HTMLParser.HTMLParser.reset(self)
-        self.description=""
-        self.in_description=False
-        self.stack=[]
-        self.error_count=0
-    
-    def error(self,error):
-        if self.error_count > 10:
-            raise Connector.ConnectorException('Failed to get the description from the video web page!\nSay thanks to YouTube')
-        self.rawdata = '\n'.join(self.html.split('\n')[self.getpos()[0]:])
-        self.error_count += 1
-        self.goahead(1)
-        
+    @staticmethod
+    def use(url, cache):
+        match=re.match(CacheSaver.CACHE_RE, url)
+        url=match.group(1) + cache + match.group(3)
+        return url
+                       

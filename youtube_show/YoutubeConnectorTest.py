@@ -31,11 +31,11 @@ class YoutubeConnectorTest(unittest.TestCase):
         result = self.searcher.search(q)
         self.assertTrue(type(result)==list, 'YTSearcher.search must return a list')
         self.assertTrue(len(result)>0, 'Less than 1 result')
-        
-        
+    
     def test_description(self):
         desc = self.connector.get_description(self.VID)
-        self.assertTrue(type(desc)==str, 'YTConnector.get_description must return a str')
+        self.assertTrue(type(desc)==str or type(desc)==unicode, 'YTConnector.get_description must return a str/unicode (returned %s)'
+                        % str(type(desc)))
         
     def test_get_url(self):
         url = self.connector.get_url_by_id(self.VID)
