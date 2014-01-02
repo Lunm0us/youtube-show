@@ -95,7 +95,7 @@ class YTSearcher(Connector.Searcher):
     def search_user(self,user,query,number=10,num_from=1):
         query_url=self.PROTO_USER %(user,number,num_from)
         if query:
-            query_url+=self.PROTO_USER_QUERY % query
+            query_url+=self.PROTO_USER_QUERY % urllib.quote(query)
         doc=self.downloader.open(query_url).read()
         data=self.decoder.decode(doc)
         del doc
