@@ -762,7 +762,19 @@ class MainWindow(object):
         hobj.lastquery.number=self.config['number']
         t = threading.Thread(target=self.do_search_thread, args=(hobj.lastquery,self.end_search))
         t.start()
-        
+
+    def do_search_user(self, widget, video):
+        user = video.get_uploader()
+        query=Connector.Query(offset=1,number=self.config['number-start'], user=user)
+        showbox = ShowBox()
+        showbox.connect('scroll-end-event', self.do_next_search)
+        hobj=HistoryObject(query,self.config['number-start']+1,showbox)
+        self.replace_showbox(showbox)
+        self.history.append(hobj)
+        self.search(query)
+        self.first_button.set_sensitive(True)
+        self.prev_button.set_sensitive(True)
+
     def do_show_bookmarks(self,widget):
         self.showbox.clear()
         self.showbox.handler_block_by_func(self.do_next_search)
@@ -816,6 +828,9 @@ class MainWindow(object):
             s='Bookmark'
         item = gtk.MenuItem(s)
         item.connect('activate',self.do_bookmark, video)
+        menu.append(item)
+        item = gtk.MenuItem('Search for User')
+        item.connect('activate', self.do_search_user, video)
         menu.append(item)
         menu.show_all()
         menu.popup(None, None, None, event.button, event.time)
